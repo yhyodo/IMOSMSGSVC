@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>XSLT Transform Viewer</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    textarea { width: 98%; height: 80px; font-family: monospace; resize: none; }
+    button { margin-top: 1em; padding: 0.5em 1em; }
+    iframe { width: 100%; height: 1000px; border: 1px solid #ccc; margin-top: 1em; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <h1>Paste Messaging Service Config XML to Transform</h1>
+  <textarea id="xmlInput" placeholder="Paste your XML content here..."></textarea>
+  <button onclick="transformXML()">Transform</button>
+  <iframe id="outputFrame"></iframe>
+
+  <script>
+    const xsltString = `<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+  <xsl:output method="html" indent="yes" encoding="UTF-8"/>
+  <xsl:strip-space elements="*"/>
+
+  <xsl:template match="/">
+    <html>
+      <head>
+        <title>Message Handlers</title>
+        <style>
+          body { font-family: sans-serif; font-size: 0.8em; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f0f0f0; }
+          h2 { margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <h1>Message Handlers</h1>
+
+        <xsl:for-each select="//messageHandler">
+          <!-- Dynamically style h2 based on @enabled attribute -->
+          <h2>
+            <xsl:attribute name="style">
+              <xsl:choose>
+                <xsl:when test="@enabled='true'">color: green;</xsl:when>
+                <xsl:when test="@enabled='false'">color: grey;</xsl:when>
+                <xsl:otherwise>color: black;</xsl:otherwise>
+              </xsl:choose>
+            </xsl:attribute>
+            Message Handler: <xsl:value-of select="@name"/>
+          </h2>
+
+          <table>
+            <tr>
+              <th>Command</th>
+              <th>Argument</th>
+              <th>Xpath</th>
+            </tr>
+            <xsl:for-each select="actions/action">
+              <tr>
+                <td><xsl:value-of select="@command"/></td>
+                <td><xsl:value-of select="@arguments"/></td>
+                <td><xsl:value-of select="@requireXpath"/></td>
+              </tr>
+            </xsl:for-each>
+          </table>
+        </xsl:for-each>
+
+        <h1>Scheduled Tasks</h1>
+
+        <xsl:for-each select="//scheduledTask">
+          <h2>
+		  <xsl:attribute name="style">
+    <xsl:choose>
+      <xsl:when test="@enabled='true'">color: green;</xsl:when>
+      <xsl:when test="@enabled='false'">color: grey;</xsl:when>
+      <xsl:otherwise>color: black;</xsl:otherwise>
+    </xsl:choose>
+  </xsl:attribute>
+			Task: <xsl:value-of select="@name"/><xsl:text> runs at </xsl:text><xsl:value-of select="@occurs"/></h2>
+          <table>
+            <tr>
+              <th>Command</th>
+              <th>Argument</th>
+            </tr>
+            <xsl:for-each select="actions/action">
+              <tr>
+                <td><xsl:value-of select="@command"/></td>
+                <td><xsl:value-of select="@arguments"/></td>
+              </tr>
+            </xsl:for-each>
+          </table>
+        </xsl:for-each>
+
+      </body>
+    </html>
+  </xsl:template>
+
+</xsl:stylesheet>`;
+    
+    function transformXML() {
+      const xmlStr = document.getElementById("xmlInput").value;
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlStr, "text/xml");
+      const xslt = parser.parseFromString(xsltString, "text/xml");
+
+      const processor = new XSLTProcessor();
+      processor.importStylesheet(xslt);
+
+      const resultDocument = processor.transformToDocument(xml);
+      const serializer = new XMLSerializer();
+      const html = serializer.serializeToString(resultDocument);
+
+      const frame = document.getElementById("outputFrame");
+      frame.srcdoc = html;
+    }
+  </script>
+</body>
+</html>
