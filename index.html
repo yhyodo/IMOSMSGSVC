@@ -7,12 +7,12 @@
     body { font-family: sans-serif; padding: 1em; }
     textarea { width: 98%; height: 80px; font-family: monospace; resize: none; }
     button { margin-top: 1em; padding: 0.5em 1em; }
-    iframe { width: 100%; height: 1000px; border: 1px solid #ccc; margin-top: 1em; font-size: 0.8em; }
+    iframe { width: 98%; height: 100px; border: 1px solid #ccc; margin-top: 1em; font-size: 0.8em; }
   </style>
 </head>
 <body>
-  <h1>Paste Messaging Service Config XML to Transform</h1>
-  <textarea id="xmlInput" placeholder="Paste your XML content here..."></textarea>
+  <h1>Paste IMOS Messaging Service Config XML to Transform</h1>
+  <textarea id="xmlInput" placeholder="Paste your IMOS Messaging Config XML content here..."></textarea>
   <button onclick="transformXML()">Transform</button>
   <iframe id="outputFrame"></iframe>
 
@@ -25,6 +25,8 @@
   <xsl:strip-space elements="*"/>
 
   <xsl:template match="/">
+	<xsl:variable name="date" select="substring-before(//lastUpdated[1], 'T')"/>
+	<xsl:variable name="time" select="substring-before(substring-after(//lastUpdated[1], 'T'),'.')"/>
     <html>
       <head>
         <title>Message Handlers</title>
@@ -37,24 +39,39 @@
         </style>
       </head>
       <body>
-        <h1>Message Handlers</h1>
+        <h1>Message Handlers as of <xsl:value-of select="$date"/><xsl:text> </xsl:text><xsl:value-of select="$time"/></h1>
 
         <xsl:for-each select="//messageHandler">
           <!-- Dynamically style h2 based on @enabled attribute -->
-          <h2>
-            <xsl:attribute name="style">
-              <xsl:choose>
-                <xsl:when test="@enabled='true'">color: green;</xsl:when>
-                <xsl:when test="@enabled='false'">color: grey;</xsl:when>
-                <xsl:otherwise>color: black;</xsl:otherwise>
-              </xsl:choose>
-            </xsl:attribute>
-            Message Handler: <xsl:value-of select="@name"/>
-	    <xsl:if test="normalize-space(@requireXpath) != ''">
-		<br/>
-		requireXpath: <xsl:value-of select="@requireXpath"/>
-	    </xsl:if>
-          </h2>
+			<h2>
+  <xsl:attribute name="style">
+    <xsl:choose>
+      <xsl:when test="@enabled='true'">color: green; margin-bottom: 0.5em;</xsl:when>
+      <xsl:when test="@enabled='false'">color: red; margin-bottom: 0.5em;</xsl:when>
+      <xsl:otherwise>color: black; margin-bottom: 0.5em;</xsl:otherwise>
+    </xsl:choose>
+  </xsl:attribute>
+
+  <strong>Message Handler Name:</strong>
+  <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+    <xsl:value-of select="@name"/>
+  </span>
+
+  <span style="display:inline-block; width: 1em;"/><!-- space -->
+
+  <strong>Target Msg Type:</strong>
+  <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+    <xsl:value-of select="@target"/>
+  </span>
+
+  <xsl:if test="normalize-space(@requireXpath) != ''">
+    <br/>
+    <strong>requireXpath:</strong>
+    <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+      <xsl:value-of select="@requireXpath"/>
+    </span>
+  </xsl:if>
+</h2>
 
           <table>
             <tr>
@@ -76,14 +93,26 @@
 
         <xsl:for-each select="//scheduledTask">
           <h2>
-		  <xsl:attribute name="style">
+  <xsl:attribute name="style">
     <xsl:choose>
-      <xsl:when test="@enabled='true'">color: green;</xsl:when>
-      <xsl:when test="@enabled='false'">color: grey;</xsl:when>
-      <xsl:otherwise>color: black;</xsl:otherwise>
+      <xsl:when test="@enabled='true'">color: green; margin-bottom: 0.5em;</xsl:when>
+      <xsl:when test="@enabled='false'">color: red; margin-bottom: 0.5em;</xsl:when>
+      <xsl:otherwise>color: black; margin-bottom: 0.5em;</xsl:otherwise>
     </xsl:choose>
   </xsl:attribute>
-			Task: <xsl:value-of select="@name"/><xsl:text> runs at </xsl:text><xsl:value-of select="@occurs"/></h2>
+
+  <strong>Task Name:</strong>
+  <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+    <xsl:value-of select="@name"/>
+  </span>
+
+  <span style="display:inline-block; width: 1em;"/>
+
+  <strong>Runs At:</strong>
+  <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+    <xsl:value-of select="@occurs"/>
+  </span>
+</h2>
           <table>
             <tr>
               <th>Command</th>
@@ -118,7 +147,11 @@
       const html = serializer.serializeToString(resultDocument);
 
       const frame = document.getElementById("outputFrame");
-      frame.srcdoc = html;
+      frame.onload = () => {
+  const frameDocument = frame.contentDocument || frame.contentWindow.document;
+  frame.style.height = frameDocument.body.scrollHeight + 50 + 'px';
+};
+frame.srcdoc = html;
     }
   </script>
 </body>
