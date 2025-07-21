@@ -50,6 +50,10 @@
               </xsl:choose>
             </xsl:attribute>
             Message Handler: <xsl:value-of select="@name"/>
+	    <xsl:if test="normalize-space(@requireXpath) != ''">
+		<br/>
+		requireXpath: <xsl:value-of select="@requireXpath"/>
+	    </xsl:if>
           </h2>
 
           <table>
