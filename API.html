@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>Paste IMOS Messaging Service Config XML to Transform v2.1</h1>
+  <h1>Paste IMOS Messaging Service Config XML to Transform v2.2</h1>
 
   <label class="label">API Token:</label>
   <textarea id="tokenInput" placeholder="Paste your API token here..."></textarea>
@@ -133,20 +133,34 @@
 
     async function transformXML() {
       const token = document.getElementById("tokenInput").value.trim();
-      const apiUrl = `https://api.veslink.com/v1/imos/forms/ConfigOptions/?fields=XmlSettings&filter=PreferenceId==\"imosMessageConfig\"&apiToken=${token}`;
+      const apiUrl = `https://api.veslink.com/v1/imos/forms/ConfigOptions/?fields=XmlSettings&filter=PreferenceId=="imosMessageConfig"&apiToken=${token}`;
       try {
         const response = await fetch(apiUrl);
         const text = await response.text();
         document.getElementById("rawResponse").value = text; // Display full raw response
+
         const json = JSON.parse(text);
         let rawXml = json[0]?.XmlSettings || "";
+
+        // Replace escaped newlines and quotes
         rawXml = rawXml.replace(/\\n/g, "\n").replace(/\\"/g, '"');
-		rawXml = rawXml.replace(/^"|"$/g, ""); // Strip leading/trailing quotes
+
+        // Strip leading/trailing quotes
+        rawXml = rawXml.replace(/^"|"$/g, "");
+
+        // Replace consecutive double quotes with a single double quote
+        rawXml = rawXml.replace(/""/g, '"');
+
+        // Split into lines and remove the first line
         const lines = rawXml.split("\n");
         lines.shift(); // remove first line
         const xmlContent = lines.join("\n");
+
+        // Update textareas
         document.getElementById("rawXml").value = xmlContent;
         document.getElementById("xmlInput").value = xmlContent;
+
+        // Parse XML and apply XSLT
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlContent, "text/xml");
         const xslt = parser.parseFromString(xsltString, "text/xml");
@@ -155,6 +169,7 @@
         const resultDocument = processor.transformToDocument(xml);
         const serializer = new XMLSerializer();
         const html = serializer.serializeToString(resultDocument);
+
         const frame = document.getElementById("outputFrame");
         frame.onload = () => {
           const frameDocument = frame.contentDocument || frame.contentWindow.document;
@@ -169,4 +184,3 @@
   </script>
 </body>
 </html>
-
