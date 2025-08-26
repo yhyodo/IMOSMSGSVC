@@ -140,8 +140,8 @@
         document.getElementById("rawResponse").value = text; // Display full raw response
         const json = JSON.parse(text);
         let rawXml = json[0]?.XmlSettings || "";
-        rawXml = rawXml.replace(/^"|"$/g, ""); // Strip leading/trailing quotes
         rawXml = rawXml.replace(/\\n/g, "\n").replace(/\\"/g, '"');
+		rawXml = rawXml.replace(/^"|"$/g, ""); // Strip leading/trailing quotes
         const lines = rawXml.split("\n");
         lines.shift(); // remove first line
         const xmlContent = lines.join("\n");
