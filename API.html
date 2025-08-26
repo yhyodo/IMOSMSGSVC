@@ -154,8 +154,8 @@
         // Split into lines and remove the first line
         const lines = rawXml.split("\n");
         lines.shift(); // remove first line
-		lines.replace(/^"|"$/g, "");
-        const xmlContent = lines.join("\n");
+		const linesa = lines.replace(/^"|"$/g, "");
+        const xmlContent = linesa.join("\n");
 
         // Update textareas
         document.getElementById("rawXml").value = xmlContent;
