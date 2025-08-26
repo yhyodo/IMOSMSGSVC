@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>Paste IMOS Messaging Service Config XML to Transform v2.5</h1>
+  <h1>Paste IMOS Messaging Service Config XML to Transform v2.6</h1>
 
   <label class="label">API Token:</label>
   <textarea id="tokenInput" placeholder="Paste your API token here..."></textarea>
@@ -146,6 +146,7 @@
         rawXml = rawXml.replace(/\\n/g, "\n").replace(/\\"/g, '"');
 
         // Strip leading/trailing quotes
+		rawXml.shift(); //remove first line
         rawXml = rawXml.replace(/^"|"$/g, "");
 
         // Replace consecutive double quotes with a single double quote
@@ -153,8 +154,8 @@
 
         // Split into lines and remove the first line
         const lines = rawXml.split("\n");
-        lines.shift(); // remove first line
-		lines.replace(/^"|"$/g, "");
+        // lines.shift(); // remove first line
+		// lines.replace(/^"|"$/g, "");
         const xmlContent = lines.join("\n");
 
         // Update textareas
