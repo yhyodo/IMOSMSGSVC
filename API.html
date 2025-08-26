@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>XSLT Transform Viewer</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    textarea { width: 98%; font-family: monospace; resize: none; }
+    #xmlInput, #tokenInput, #rawResponse, #rawXml { height: 80px; margin-bottom: 1em; }
+    #outputFrame { width: 98%; border: 1px solid #ccc; margin-top: 1em; font-size: 0.8em; }
+    button { margin-top: 1em; padding: 0.5em 1em; }
+    .label { margin-top: 1em; font-weight: bold; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Paste IMOS Messaging Service Config XML to Transform</h1>
+
+  <label class="label">API Token:</label>
+  <textarea id="tokenInput" placeholder="Paste your API token here..."></textarea>
+
+  <label class="label">Raw API Response:</label>
+  <textarea id="rawResponse" readonly></textarea>
+
+  <label class="label">Raw XML:</label>
+  <textarea id="rawXml" readonly></textarea>
+
+  <label class="label">Final XML Input (Editable):</label>
+  <textarea id="xmlInput" placeholder="Paste your IMOS Messaging Config XML content here..."></textarea>
+
+  <button onclick="transformXML()">Transform</button>
+  <iframe id="outputFrame"></iframe>
+
+  <script>
+    const xsltString = `<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <xsl:output method="html" indent="yes" encoding="UTF-8"/>
+  <xsl:strip-space elements="*"/>
+  <xsl:template match="/">
+    <xsl:variable name="date" select="substring-before(//lastUpdated[1], 'T')"/>
+    <xsl:variable name="time" select="substring-before(substring-after(//lastUpdated[1], 'T'),'.')"/>
+    <html>
+      <head>
+        <title>Message Handlers</title>
+        <style>
+          body { font-family: sans-serif; font-size: 0.8em; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f0f0f0; }
+          h2 { margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <h1>Message Handlers as of <xsl:value-of select="$date"/><xsl:text> </xsl:text><xsl:value-of select="$time"/></h1>
+        <xsl:for-each select="//messageHandler">
+          <h2>
+            <xsl:attribute name="style">
+              <xsl:choose>
+                <xsl:when test="@enabled='true'">color: green; margin-bottom: 0.5em;</xsl:when>
+                <xsl:when test="@enabled='false'">color: red; margin-bottom: 0.5em;</xsl:when>
+                <xsl:otherwise>color: black; margin-bottom: 0.5em;</xsl:otherwise>
+              </xsl:choose>
+            </xsl:attribute>
+            <strong>Message Handler Name:</strong>
+            <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+              <xsl:value-of select="@name"/>
+            </span>
+            <span style="display:inline-block; width: 1em;"/>
+            <strong>Target Msg Type:</strong>
+            <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+              <xsl:value-of select="@target"/>
+            </span>
+            <xsl:if test="normalize-space(@requireXpath) != ''">
+              <br/>
+              <strong>requireXpath:</strong>
+              <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+                <xsl:value-of select="@requireXpath"/>
+              </span>
+            </xsl:if>
+          </h2>
+          <table>
+            <tr>
+              <th>Command</th>
+              <th>Argument</th>
+              <th>Xpath</th>
+            </tr>
+            <xsl:for-each select="actions/action">
+              <tr>
+                <td><xsl:value-of select="@command"/></td>
+                <td><xsl:value-of select="@arguments"/></td>
+                <td><xsl:value-of select="@requireXpath"/></td>
+              </tr>
+            </xsl:for-each>
+          </table>
+        </xsl:for-each>
+        <h1>Scheduled Tasks</h1>
+        <xsl:for-each select="//scheduledTask">
+          <h2>
+            <xsl:attribute name="style">
+              <xsl:choose>
+                <xsl:when test="@enabled='true'">color: green; margin-bottom: 0.5em;</xsl:when>
+                <xsl:when test="@enabled='false'">color: red; margin-bottom: 0.5em;</xsl:when>
+                <xsl:otherwise>color: black; margin-bottom: 0.5em;</xsl:otherwise>
+              </xsl:choose>
+            </xsl:attribute>
+            <strong>Task Name:</strong>
+            <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+              <xsl:value-of select="@name"/>
+            </span>
+            <span style="display:inline-block; width: 1em;"/>
+            <strong>Runs At:</strong>
+            <span style="background-color: #e0e0e0; padding: 2px 4px; border-radius: 4px;">
+              <xsl:value-of select="@occurs"/>
+            </span>
+          </h2>
+          <table>
+            <tr>
+              <th>Command</th>
+              <th>Argument</th>
+            </tr>
+            <xsl:for-each select="actions/action">
+              <tr>
+                <td><xsl:value-of select="@command"/></td>
+                <td><xsl:value-of select="@arguments"/></td>
+              </tr>
+            </xsl:for-each>
+          </table>
+        </xsl:for-each>
+      </body>
+    </html>
+  </xsl:template>
+</xsl:stylesheet>`;
+
+    async function transformXML() {
+      const token = document.getElementById("tokenInput").value.trim();
+      const apiUrl = `https://api.veslink.com/v1/imos/forms/ConfigOptions/?fields=XmlSettings&filter=PreferenceId==\"imosMessageConfig\"&apiToken=${token}`;
+      try {
+        const response = await fetch(apiUrl);
+        const text = await response.text();
+        document.getElementById("rawResponse").value = text; // Display full raw response
+        const json = JSON.parse(text);
+        let rawXml = json[0]?.XmlSettings || "";
+        rawXml = rawXml.replace(/^"|"$/g, ""); // Strip leading/trailing quotes
+        rawXml = rawXml.replace(/\\n/g, "\n").replace(/\\"/g, '"');
+        const lines = rawXml.split("\n");
+        lines.shift(); // remove first line
+        const xmlContent = lines.join("\n");
+        document.getElementById("rawXml").value = xmlContent;
+        document.getElementById("xmlInput").value = xmlContent;
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlContent, "text/xml");
+        const xslt = parser.parseFromString(xsltString, "text/xml");
+        const processor = new XSLTProcessor();
+        processor.importStylesheet(xslt);
+        const resultDocument = processor.transformToDocument(xml);
+        const serializer = new XMLSerializer();
+        const html = serializer.serializeToString(resultDocument);
+        const frame = document.getElementById("outputFrame");
+        frame.onload = () => {
+          const frameDocument = frame.contentDocument || frame.contentWindow.document;
+          frame.style.height = frameDocument.body.scrollHeight + 50 + 'px';
+        };
+        frame.srcdoc = html;
+      } catch (e) {
+        alert("Failed to fetch or parse XML from API.\n" + e);
+        console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
