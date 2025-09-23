@@ -6,30 +6,24 @@
   <style>
     body { font-family: sans-serif; padding: 1em; }
     textarea { width: 98%; font-family: monospace; resize: none; }
-    #xmlInput, #tokenInput, #rawResponse, #rawXml { height: 80px; margin-bottom: 1em; }
-    #outputFrame { width: 98%; border: 1px solid #ccc; margin-top: 1em; font-size: 0.8em; }
+    #xmlInput {overflow: hidden; min-height: 40px; resize: none;}
+    #tokenInput { height: 20px; margin-bottom: 1em; width: 40%}
+    #outputFrame { width: 98%; border: 1px solid; margin-top: 1em; overflow: hidden; min-height: 40px; resize: none;}
     button { margin-top: 1em; padding: 0.5em 1em; }
     .label { margin-top: 1em; font-weight: bold; display: block; }
   </style>
 </head>
 <body>
-  <h1>Paste IMOS Messaging Service Config XML to Transform v2.9</h1>
+  <h1>YOSHIMOS MSG SVC viewer v2.9</h1>
 
   <label class="label">API Token:</label>
   <textarea id="tokenInput" placeholder="Paste your API token here..."></textarea>
-
-  <label class="label">Raw API Response:</label>
-  <textarea id="rawResponse" readonly></textarea>
-
-  <label class="label">Raw XML:</label>
-  <textarea id="rawXml" readonly></textarea>
-
-  <label class="label">Final XML Input (Editable):</label>
-  <textarea id="xmlInput" placeholder="Paste your IMOS Messaging Config XML content here..."></textarea>
-
+	<br>
   <button onclick="transformXML()">Transform</button>
   <iframe id="outputFrame"></iframe>
-
+  
+	<label class="label">MSG SVC CFG XML</label>
+  <textarea id="xmlInput" placeholder="Your IMOS MSG SVC XML content appears here..."></textarea>
   <script>
     const xsltString = `<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0"
@@ -137,46 +131,44 @@
       try {
         const response = await fetch(apiUrl);
         const text = await response.text();
-        document.getElementById("rawResponse").value = text; // Display full raw response
 
-        // const json = JSON.parse(text);
-        let rawXml = text;
+        let rawXml = text
+          .replace(/\\n/g, "\n")
+          .replace(/\\"/g, '"')
+          .replace(/^"|"$/g, "")
+          .replace(/""/g, '"');
 
-        // Replace escaped newlines and quotes
-        rawXml = rawXml.replace(/\\n/g, "\n").replace(/\\"/g, '"');
-
-        // Strip leading/trailing quotes
-        rawXml = rawXml.replace(/^"|"$/g, "");
-
-        // Replace consecutive double quotes with a single double quote
-        rawXml = rawXml.replace(/""/g, '"');
-
-        // Split into lines and remove the first line
         const lines = rawXml.split("\n");
-        lines.shift().replace(/^"|"$/g, ""); // remove first line
-		// const linesa = lines.replace(/^"|"$/g, "");
-        const xmlContent = lines.join("\n");
+        lines.shift(); // drop first line if it's a wrapper
+        const xmlContent = lines.join("\n").replace(/^"|"$/g, "");
 
-        // Update textareas
-        document.getElementById("rawXml").value = xmlContent;
         document.getElementById("xmlInput").value = xmlContent;
 
-        // Parse XML and apply XSLT
+        // Parse XML + XSLT
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlContent, "text/xml");
         const xslt = parser.parseFromString(xsltString, "text/xml");
+
         const processor = new XSLTProcessor();
         processor.importStylesheet(xslt);
-        const resultDocument = processor.transformToDocument(xml);
-        const serializer = new XMLSerializer();
-        const html = serializer.serializeToString(resultDocument);
 
+        // Transform to fragment for safe HTML embedding
+        const resultFragment = processor.transformToFragment(xml, document);
+        const tempDiv = document.createElement("div");
+        tempDiv.appendChild(resultFragment);
+
+        const html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>"
+                   + tempDiv.innerHTML + "</body></html>";
+
+        // Inject into iframe
         const frame = document.getElementById("outputFrame");
-        frame.onload = () => {
-          const frameDocument = frame.contentDocument || frame.contentWindow.document;
-          frame.style.height = frameDocument.body.scrollHeight + 50 + 'px';
-        };
         frame.srcdoc = html;
+		frame.onload = () => {
+  const frameDoc = frame.contentDocument || frame.contentWindow.document;
+  if (frameDoc && frameDoc.body) {
+    frame.style.height = frameDoc.body.scrollHeight + 80 + "px";
+  }
+};
       } catch (e) {
         alert("Failed to fetch or parse XML from API.\n" + e);
         console.error(e);
